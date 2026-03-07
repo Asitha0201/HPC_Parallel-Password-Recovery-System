@@ -25,24 +25,20 @@ int main() {
         return 1;
     }
 
-    printf("=== Serial MD5 Password Recovery ===\n");
+    //printf("=== Serial MD5 Password Recovery ===\n");
     printf("Target hash: %s\n\n", target_hash);
 
     clock_t start = clock();
 
     /* Try each word from dictionary */
     while (fgets(word, sizeof(word), file)) {
-        word[strcspn(word, "\r\n")] = 0;  /* remove newline */
+        word[strcspn(word, "\r\n")] = 0;  /* remove newline here this text file make on Windows so line endings are different */
         attempts++;
 
-        /* Compute MD5 hash of the word */
-        MD5((unsigned char *)word, strlen(word), hash);
+        MD5((unsigned char *)word, strlen(word), hash);  /* compute MD5 hash */
+        md5_to_hex(hash, hash_hex);                        /* convert to hex string */
 
-        /* Convert to hex string */
-        md5_to_hex(hash, hash_hex);
-
-        /* Check if it matches */
-        if (strcmp(hash_hex, target_hash) == 0) {
+        if (strcmp(hash_hex, target_hash) == 0) {          /* compare */
             found = 1;
             printf("Password found: %s\n", word);
             break;
