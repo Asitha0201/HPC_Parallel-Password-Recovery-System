@@ -37,7 +37,10 @@ int main() {
         word[strcspn(word, "\r\n")] = 0;  /* remove newline here this text file make on Windows so line endings are different */
         attempts++;
 
-        MD5((unsigned char *)word, strlen(word), hash);  /* compute MD5 hash */
+        /* Compute MD5 hash using EVP API */
+        EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
+        EVP_DigestUpdate(ctx, word, strlen(word));
+        EVP_DigestFinal_ex(ctx, hash, &digest_len);  /* compute MD5 hash */
         md5_to_hex(hash, hash_hex);                        /* convert to hex string */
 
         if (strcmp(hash_hex, target_hash) == 0) {          /* compare */
@@ -50,6 +53,7 @@ int main() {
     clock_t end = clock();
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
 
+    EVP_MD_CTX_free(ctx);
     fclose(file);
 
     if (!found)
