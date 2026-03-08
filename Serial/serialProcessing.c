@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 
 // MD5 binary hash to readable  string 
 void md5_to_hex(unsigned char *hash, char *output) {
