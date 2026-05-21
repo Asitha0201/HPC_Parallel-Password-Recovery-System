@@ -1,22 +1,4 @@
-/*
- * omp_crack.c — Phase 2: OpenMP Shared Memory Password Recovery
- * EE7218 / EC7207 High Performance Computing — Group G38
- *
- * HOW IT WORKS:
- *   1. Load the entire dictionary into a shared array in RAM.
- *   2. OpenMP spawns N threads (one per CPU core).
- *   3. Each thread handles a CHUNK of the word list (schedule dynamic).
- *   4. Every thread has its OWN EVP_MD_CTX — this is critical for thread safety.
- *   5. When any thread finds the match it sets `found` inside a critical section.
- *   6. Other threads check `found` at loop start and skip remaining work.
- *
- * Compile:
- *   gcc -O2 -fopenmp -lssl -lcrypto -o omp_crack omp_crack.c
- *
- * Run:
- *   ./omp_crack
- *   OMP_NUM_THREADS=8 ./omp_crack   (force thread count)
- */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,13 +46,6 @@ int main(int argc, char *argv[]) {
     int found_index = -1;   /* -1 = not found yet */
     double t0 = omp_get_wtime();
 
-    /*
-     * Parallel region:
-     *   - shared(found_index): all threads read/write the same flag
-     *   - Each thread allocates its own ctx — no sharing of EVP state
-     *   - schedule(dynamic,1000): steal work in 1000-word chunks
-     *     so faster cores don't sit idle waiting for slow ones
-     */
     #pragma omp parallel shared(found_index)
     {
         EVP_MD_CTX *ctx = EVP_MD_CTX_new();
