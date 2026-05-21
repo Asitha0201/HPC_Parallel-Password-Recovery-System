@@ -1,6 +1,5 @@
 /*
- * mpi_crack.c — Phase 3: MPI Distributed Memory Password Recovery
- * EE7218 / EC7207 High Performance Computing — Group G38
+
  *
  * ─────────────────────────────────────────────────────────────────
  *  HOW "SPREADING ACROSS MULTIPLE COMPUTERS" WORKS:
