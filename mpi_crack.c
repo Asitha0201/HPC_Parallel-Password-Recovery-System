@@ -44,22 +44,13 @@ int main(int argc, char *argv[]) {
                total_words, size);
     }
 
-    /* ── Step 2: Broadcast total word count to all nodes ─────────────── */
     MPI_Bcast(&total_words, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    /*
-     * Trim total to be divisible by `size` so MPI_Scatter works evenly.
-     * The last few words (remainder) are handled by the master separately.
-     */
+  
     int chunk = total_words / size;
-    int adjusted_total = chunk * size;  /* words that will be scattered */
+    int adjusted_total = chunk * size;  
 
-    /* ── Step 3: Scatter word chunks to all nodes ─────────────────────── */
-    /*
-     * MPI_Scatter sends all_words[rank*chunk .. (rank+1)*chunk) to node `rank`.
-     * Each node receives exactly `chunk` words × WORD_LEN bytes.
-     * This is the actual NETWORK TRANSFER happening here.
-     */
+  
     static char my_words[MAX_WORDS][WORD_LEN];
     MPI_Scatter(
         all_words,  chunk * WORD_LEN, MPI_CHAR,   /* send buffer on master */
@@ -67,7 +58,7 @@ int main(int argc, char *argv[]) {
         0, MPI_COMM_WORLD
     );
 
-    /* ── Step 4: Each node hashes its own chunk ───────────────────────── */
+  
     double t0 = MPI_Wtime();
     char found_word[WORD_LEN];
     memset(found_word, 0, WORD_LEN);
@@ -92,11 +83,7 @@ int main(int argc, char *argv[]) {
     EVP_MD_CTX_free(ctx);
     double t1 = MPI_Wtime();
 
-    /* ── Step 5: Gather all results back to master ────────────────────── */
-    /*
-     * MPI_Gather collects found_word from every node into all_results on Node 0.
-     * An empty found_word means that node didn't find it.
-     */
+    
     static char all_results[64][WORD_LEN];
     MPI_Gather(
         found_word,   WORD_LEN, MPI_CHAR,
@@ -104,7 +91,7 @@ int main(int argc, char *argv[]) {
         0, MPI_COMM_WORLD
     );
 
-    /* ── Step 6: Master prints the final answer ───────────────────────── */
+   
     if (rank == 0) {
         printf("\n=== MPI Results ===\n");
         int found = 0;
