@@ -1,51 +1,4 @@
-/*
- * hybrid_crack.cu — Phase 4: Hybrid OpenMP + CUDA Password Recovery
- * EE7218 / EC7207 High Performance Computing — Group G38
- *
- * ─────────────────────────────────────────────────────────────────
- *  HOW THE HYBRID APPROACH WORKS:
- * ─────────────────────────────────────────────────────────────────
- *
- *  CPU (OpenMP) role  → manager / distributor
- *    One OpenMP thread is created PER GPU found on the machine.
- *    Each thread owns one GPU and is responsible for:
- *      a) Copying its share of the dictionary to GPU VRAM.
- *      b) Launching the CUDA kernel.
- *      c) Reading back the result.
- *
- *  GPU (CUDA) role  → brute-force engine
- *    A CUDA kernel is a function that runs on the GPU.
- *    When launched with <<<blocks, threads_per_block>>> notation,
- *    the GPU creates THOUSANDS of threads simultaneously.
- *    Each thread handles exactly ONE word:
- *      thread 0  → hash words[0]
- *      thread 1  → hash words[1]
- *      ...
- *      thread N  → hash words[N]    (all at the same instant)
- *
- *    This is why GPU is ~1000× faster: instead of 8 CPU cores doing
- *    8 words at a time, a GPU does 16,000+ words at once.
- *
- *  MD5 on GPU:
- *    MD5 is pure integer/bitwise arithmetic — no memory dependencies,
- *    no branching. Each word is independent. This is the perfect
- *    workload for SIMT (Single Instruction Multiple Thread) execution.
- *
- * ─────────────────────────────────────────────────────────────────
- *  Build requirements:
- *    - NVIDIA GPU with CUDA Compute Capability ≥ 3.5
- *    - CUDA Toolkit installed (nvcc compiler)
- *    - OpenSSL not needed on GPU — MD5 is reimplemented in CUDA
- *
- *  Compile:
- *    nvcc -Xcompiler -fopenmp -O3 -arch=sm_86 -o hybrid hybrid_crack.cu
- *    (sm_86 = Ampere, RTX 30xx / A-series — change for your GPU)
- *
- *  Run:
- *    ./hybrid
- *    ./hybrid dictionary.txt
- * ─────────────────────────────────────────────────────────────────
- */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -128,17 +81,7 @@ __device__ void md5_device(const char *msg, int msg_len, unsigned char *digest) 
     digest[14]=(unsigned char)(d0>>16);  digest[15]=(unsigned char)(d0>>24);
 }
 
-/* ── CUDA Kernel ─────────────────────────────────────────────────────────
- *
- * Each GPU thread hashes one word and compares it to the target hash.
- * atomicExch ensures only the first match is recorded (race-safe).
- *
- * Parameters:
- *   d_words     — flat array: word i starts at d_words[i * WORD_LEN]
- *   n_words     — number of words in this chunk
- *   d_target    — 16-byte binary target MD5 (pre-decoded from hex on CPU)
- *   d_result    — output: index of matched word, or -1 if not found
- */
+
 __global__ void crack_kernel(
     const char    *d_words,
     int            n_words,
@@ -221,14 +164,7 @@ int main(int argc, char *argv[]) {
     int chunk  = (total + n_gpus - 1) / n_gpus;  /* words per GPU */
     double t0  = omp_get_wtime();
 
-    /*
-     * One OpenMP thread per GPU.
-     * Each thread:
-     *   a) Binds to its GPU with cudaSetDevice(gpu_id)
-     *   b) Allocates VRAM, copies its word chunk
-     *   c) Launches the kernel
-     *   d) Reads back the result
-     */
+    
     #pragma omp parallel num_threads(n_gpus)
     {
         int gpu_id = omp_get_thread_num();
@@ -254,16 +190,7 @@ int main(int argc, char *argv[]) {
             int h_result = -1;
             cudaMemcpy(d_result, &h_result, sizeof(int), cudaMemcpyHostToDevice);
 
-            /* ── Launch kernel ──────────────────────────
-             *
-             * Grid layout:
-             *   blocks = ceil(n / BLOCK_SIZE)
-             *   Each block has BLOCK_SIZE (1024) threads
-             *   Total threads = blocks × 1024
-             *
-             *   With 1M words: 977 blocks × 1024 threads = ~1M threads
-             *   All launched simultaneously on GPU streaming processors.
-             */
+            
             int blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
             crack_kernel<<<blocks, BLOCK_SIZE>>>(d_words, n, d_target, d_result);
             cudaDeviceSynchronize();  /* wait for all GPU threads to finish */
