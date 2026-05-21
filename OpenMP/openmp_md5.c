@@ -17,7 +17,7 @@ void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
 }
 
 int main() {
-    const char *target_hash = "07cc694b9b3fc636710fa08b6922c42b";
+    const char *target_hash = "07b6cc8e85893a83ca6c7e3f1ca58ea1";
 
     int word_count = 0;
     char found_word[MAX_LEN] = "";
