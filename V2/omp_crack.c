@@ -11,7 +11,7 @@
  *   6. Other threads check `found` at loop start and skip remaining work.
  *
  * Compile:
- *   gcc -O2 -fopenmp -lssl -lcrypto -o omp_crack omp_crack.c
+ *   gcc -O2 -fopenmp -o omp_crack omp_crack.c -lssl -lcrypto
  *
  * Run:
  *   ./omp_crack
@@ -50,8 +50,8 @@ int load_dictionary(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *target_hash = "5d41402abc4b2a76b9719d911017c592"; /* MD5("hello") */
-    const char *dict_path   = (argc > 1) ? argv[1] : "dictionary.txt";
+    const char *target_hash = "1f3870be274f6c49b3e31a0c6728957f"; /* MD5("hello") */
+    const char *dict_path   = (argc > 1) ? argv[1] : "dictionary_old.txt";
 
     printf("=== OpenMP MD5 Password Recovery ===\n");
     printf("Target hash : %s\n", target_hash);
