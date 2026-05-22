@@ -59,7 +59,7 @@
 #include <cuda_runtime.h>
 
 #define WORD_LEN    64      /* max word length - fits in GPU registers */
-#define MAX_WORDS   10000000 /* same 10M-word cap used by serial/OpenMP/MPI */
+#define BATCH_WORDS 2000000 /* GPU batch size for scanning huge dictionary.txt */
 #define BLOCK_SIZE  256     /* 256 threads per CUDA block - safe value  */
 
 
@@ -260,10 +260,10 @@ void hex_to_bytes(const char *hex, unsigned char *out)
 
 int main(int argc, char *argv[])
 {
-    const char *target_hex = "2e5f7c14c9aad53efae18bde750eb249";
-    const char *dict_path  = (argc > 1) ? argv[1] : "dictionary_old.txt";
+    const char *dict_path  = (argc > 1) ? argv[1] : "dictionary.txt";
+    const char *target_hex = (argc > 2) ? argv[2] : "7a265bfa1eed87f48aaa30e2c37f6ade";
 
-    printf("=== Hybrid CUDA + OpenMP Password Cracker ===\n");
+    printf("=== Hybrid CUDA + OpenMP Full dictionary.txt Password Cracker ===\n");
     printf("Target : %s\n", target_hex);
     printf("Dict   : %s\n\n", dict_path);
 
@@ -282,12 +282,7 @@ int main(int argc, char *argv[])
     unsigned char target_bytes[16];
     hex_to_bytes(target_hex, target_bytes);
 
-    /* ------- Load dictionary -------
-     * malloc on heap - NOT a static/local array!
-     * 10M * 64 bytes = about 610 MB on heap.
-     * 128 MB on the stack = stack overflow = crash.
-     */
-    char *word_buf = (char *)malloc((size_t)MAX_WORDS * WORD_LEN);
+    char *word_buf = (char *)malloc((size_t)BATCH_WORDS * WORD_LEN);
     if (!word_buf) {
         printf("ERROR: malloc failed. Not enough RAM.\n");
         return 1;
@@ -300,73 +295,87 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int n_words = 0;
-    char line[256];
-    while (n_words < MAX_WORDS && fgets(line, sizeof(line), fp)) {
-        line[strcspn(line, "\r\n")] = '\0';
-        int wlen = (int)strlen(line);
-        if (wlen >= WORD_LEN) continue;
-        char *slot = word_buf + n_words * WORD_LEN;
-        memset(slot, 0, WORD_LEN);
-        memcpy(slot, line, wlen);
-        n_words++;
-    }
-    fclose(fp);
-    printf("Loaded : %d words\n", n_words);
-
-    /* ------- GPU memory allocation ------- */
     char          *d_words  = NULL;
     unsigned char *d_target = NULL;
     int           *d_result = NULL;
-    size_t wbytes = (size_t)n_words * WORD_LEN;
+    size_t wbytes = (size_t)BATCH_WORDS * WORD_LEN;
 
     if (cudaMalloc(&d_words,  wbytes)     != cudaSuccess ||
         cudaMalloc(&d_target, 16)         != cudaSuccess ||
         cudaMalloc(&d_result, sizeof(int))!= cudaSuccess) {
-        printf("ERROR: cudaMalloc failed. Try smaller MAX_WORDS.\n");
+        printf("ERROR: cudaMalloc failed. Try smaller BATCH_WORDS.\n");
         cudaFree(d_words); cudaFree(d_target); cudaFree(d_result);
-        free(word_buf); return 1;
+        free(word_buf); fclose(fp); return 1;
     }
 
-    /* ------- Copy CPU -> GPU ------- */
-    printf("Copying %.1f MB to GPU VRAM...\n", (float)wbytes / (1024*1024));
-    cudaMemcpy(d_words,  word_buf,     wbytes,      cudaMemcpyHostToDevice);
     cudaMemcpy(d_target, target_bytes, 16,           cudaMemcpyHostToDevice);
-    int h_result = -1;
-    cudaMemcpy(d_result, &h_result,    sizeof(int),  cudaMemcpyHostToDevice);
-
-    /* ------- Launch kernel ------- */
-    int num_blocks = (n_words + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    printf("Kernel : %d blocks x %d threads = %d GPU threads\n\n",
-           num_blocks, BLOCK_SIZE, num_blocks * BLOCK_SIZE);
 
     double t0 = omp_get_wtime();
+    long long total_words = 0;
+    long long found_global = -1;
+    int found_local = -1;
+    char line[256];
 
-    crack_kernel<<<num_blocks, BLOCK_SIZE>>>(d_words, n_words, d_target, d_result);
-    cudaDeviceSynchronize();   /* wait for all GPU threads to finish */
+    while (found_global < 0) {
+        int n_words = 0;
+        while (n_words < BATCH_WORDS && fgets(line, sizeof(line), fp)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            int wlen = (int)strlen(line);
+            if (wlen >= WORD_LEN) wlen = WORD_LEN - 1;
+            char *slot = word_buf + n_words * WORD_LEN;
+            memset(slot, 0, WORD_LEN);
+            memcpy(slot, line, wlen);
+            n_words++;
+        }
 
+        if (n_words == 0) break;
+
+        size_t batch_bytes = (size_t)n_words * WORD_LEN;
+        int h_result = -1;
+        cudaMemcpy(d_words,  word_buf,  batch_bytes, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_result, &h_result, sizeof(int), cudaMemcpyHostToDevice);
+
+        int num_blocks = (n_words + BLOCK_SIZE - 1) / BLOCK_SIZE;
+        crack_kernel<<<num_blocks, BLOCK_SIZE>>>(d_words, n_words, d_target, d_result);
+        cudaDeviceSynchronize();
+
+        cudaError_t kerr = cudaGetLastError();
+        if (kerr != cudaSuccess) {
+            printf("Kernel error: %s\n", cudaGetErrorString(kerr));
+            break;
+        }
+
+        cudaMemcpy(&h_result, d_result, sizeof(int), cudaMemcpyDeviceToHost);
+        if (h_result >= 0) {
+            found_local = h_result;
+            found_global = total_words + h_result;
+            break;
+        }
+
+        total_words += n_words;
+        printf("Scanned %lld words on GPU...\n", total_words);
+        fflush(stdout);
+    }
+
+    if (found_global >= 0) {
+        total_words = found_global + 1;
+    }
     double t1 = omp_get_wtime();
 
-    /* Check kernel errors */
-    cudaError_t kerr = cudaGetLastError();
-    if (kerr != cudaSuccess)
-        printf("Kernel error: %s\n", cudaGetErrorString(kerr));
-
-    /* ------- Copy result GPU -> CPU ------- */
-    cudaMemcpy(&h_result, d_result, sizeof(int), cudaMemcpyDeviceToHost);
-
-    /* ------- Print results ------- */
     double elapsed = t1 - t0;
-    if (h_result >= 0)
-        printf("FOUND  : \"%s\"  (index %d)\n", word_buf + h_result * WORD_LEN, h_result);
-    else
+    if (found_global >= 0) {
+        printf("\nFOUND  : \"%s\"\n", word_buf + found_local * WORD_LEN);
+        printf("Index  : %lld\n", found_global);
+    } else {
         printf("RESULT : Not found in dictionary\n");
+    }
 
+    printf("Scanned: %lld words\n", total_words);
     printf("Time   : %.4f s\n", elapsed);
-    printf("Speed  : %.2f M hash/s\n", (double)n_words / elapsed / 1e6);
+    printf("Speed  : %.2f M hash/s\n", (double)total_words / elapsed / 1e6);
 
-    /* Free everything */
     cudaFree(d_words);  cudaFree(d_target);  cudaFree(d_result);
     free(word_buf);
+    fclose(fp);
     return 0;
 }

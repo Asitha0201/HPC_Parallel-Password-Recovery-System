@@ -50,7 +50,7 @@ int load_dictionary(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *target_hash = "1f3870be274f6c49b3e31a0c6728957f"; /* MD5("hello") */
+    const char *target_hash = "2e5f7c14c9aad53efae18bde750eb249"; /* MD5("hello") */
     const char *dict_path   = (argc > 1) ? argv[1] : "dictionary_old.txt";
 
     printf("=== OpenMP MD5 Password Recovery ===\n");

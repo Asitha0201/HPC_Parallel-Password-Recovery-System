@@ -1,5 +1,7 @@
 # Run commands for all three phases
 
+2e5f7c14c9aad53efae18bde750eb249 - ming2
+
 # Phase 1 - Serial
 # Compile serial version and run it
 gcc -O2 -lssl -lcrypto -o serial_crack serialProcessing.c
@@ -12,21 +14,33 @@ gcc -O2 -fopenmp -o omp_crack omp_crack.c -lssl -lcrypto
 OMP_NUM_THREADS=8 ./omp_crack      # force 8 threads
 
 # Phase 3 - MPI
-# Compile MPI version and run it on 4 processes
+# Preferred Open MPI version: 4 ranks, cyclic distribution, no MPI_Scatter
+mpicc -O2 -o openmpi_distributed_md5 openmpi_distributed_md5.c -lssl -lcrypto
+mpirun -np 4 ./openmpi_distributed_md5
+
+# Original block-distribution MPI version
 mpicc -O2 -o mpi_crack mpi_crack.c -lssl -lcrypto
-mpirun -np 4 ./mpi_crack
+# mpirun -np 4 ./mpi_crack
 
 # Optional: pass dictionary file path to programs
 # ./serial_crack dictionary.txt
 # ./omp_crack dictionary.txt
-# mpirun -np 4 ./mpi_crack dictionary.txt
+# mpirun -np 4 ./openmpi_distributed_md5 dictionary.txt
 
 ==+=========
 gcc -O2 -fopenmp -o omp_crack omp_crack.c -lssl -lcrypto
 ./omp_crack
 
-mpicc -O2 -o mpi_crack mpi_crack.c -lssl -lcrypto
-mpirun -np 4 ./mpi_crack
+mpicc -O2 -o openmpi_distributed_md5 openmpi_distributed_md5.c -lssl -lcrypto
+mpirun -np 4 ./openmpi_distributed_md5
+
 
 nvcc -O2 -Xcompiler -fopenmp -o hybrid hybrid_crack.cu
 ./hybrid
+
+gcc serialProcessing.c -o serialProcessing -lcrypto
+./serialProcessing
+
+# Flask GUI comparison
+python3 -m pip install --break-system-packages -r requirements.txt
+python3 flask_compare_app.py

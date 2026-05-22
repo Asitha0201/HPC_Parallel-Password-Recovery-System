@@ -34,8 +34,10 @@
 #include <mpi.h>
 #include <openssl/evp.h>
 
-#define MAX_WORDS  30000000
+#define MAX_WORDS  10000000
 #define WORD_LEN   256
+#define STOP_TAG   99
+#define STOP_CHECK_INTERVAL 256
 
 static void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
     for (int i = 0; i < len; i++) {
@@ -51,7 +53,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);  /* My process ID (0 = master) */
     MPI_Comm_size(MPI_COMM_WORLD, &size);  /* Total number of processes */
 
-    const char *target_hash = "1f3870be274f6c49b3e31a0c6728957f"; /* MD5("hello") */
+    const char *target_hash = "2e5f7c14c9aad53efae18bde750eb249"; /* MD5("hello") */
     int total_words = 0;
 
     /*
@@ -121,7 +123,9 @@ int main(int argc, char *argv[]) {
      * Each node receives exactly `chunk` words × WORD_LEN bytes.
      */
     char *my_words = NULL;
-    if (chunk > 0) {
+    if (size == 1) {
+        my_words = all_words;
+    } else if (chunk > 0) {
         my_words = (char *)malloc((size_t)chunk * WORD_LEN);
         if (!my_words) {
             fprintf(stderr, "[Node %d] Error: Failed to allocate my_words\n", rank);
@@ -129,7 +133,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (chunk > 0) {
+    if (size > 1 && chunk > 0) {
         MPI_Scatter(
             all_words,        (size_t)chunk * WORD_LEN, MPI_CHAR, /* send buffer (only valid on rank 0) */
             my_words,         (size_t)chunk * WORD_LEN, MPI_CHAR, /* recv buffer (each rank) */
@@ -142,6 +146,9 @@ int main(int argc, char *argv[]) {
 
     char found_word[WORD_LEN];
     memset(found_word, 0, WORD_LEN);
+    int local_found_index = -1;
+    int stop_requested = 0;
+    long long local_checked = 0;
 
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -150,7 +157,21 @@ int main(int argc, char *argv[]) {
 
     if (chunk > 0) {
         for (int i = 0; i < chunk; i++) {
+            if ((i % STOP_CHECK_INTERVAL) == 0) {
+                int flag = 0;
+                MPI_Status status;
+                MPI_Iprobe(MPI_ANY_SOURCE, STOP_TAG, MPI_COMM_WORLD, &flag, &status);
+                if (flag) {
+                    MPI_Recv(NULL, 0, MPI_CHAR, status.MPI_SOURCE, STOP_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    stop_requested = 1;
+                }
+            }
+            if (stop_requested) {
+                break;
+            }
+
             const char *word = my_words + (size_t)i * WORD_LEN;
+            local_checked++;
 
             EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
             EVP_DigestUpdate(ctx, word, strlen(word));
@@ -158,12 +179,23 @@ int main(int argc, char *argv[]) {
             hash_to_hex(digest, hex, digest_len);
 
             if (strcmp(hex, target_hash) == 0) {
+                local_found_index = i;
                 strncpy(found_word, word, WORD_LEN - 1);
-                printf("[Node %d] FOUND: \"%s\" at local index %d\n", rank, found_word, i);
+                printf("[Node %d] FOUND: \"%s\" at local index %d (global index %d)\n",
+                       rank, found_word, i, rank * chunk + i);
+
+                for (int dest = 0; dest < size; dest++) {
+                    if (dest != rank) {
+                        MPI_Send(NULL, 0, MPI_CHAR, dest, STOP_TAG, MPI_COMM_WORLD);
+                    }
+                }
                 break;
             }
         }
     }
+
+    long long total_checked = 0;
+    MPI_Reduce(&local_checked, &total_checked, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
     EVP_MD_CTX_free(ctx);
     double t1 = MPI_Wtime();
@@ -202,9 +234,12 @@ int main(int argc, char *argv[]) {
         printf("Nodes       : %d\n", size);
         printf("Time        : %.4f s (wall clock — parallel portion)\n", t1 - t0);
         printf("Chunk/node  : %d words\n", chunk);
+        printf("Checked     : %lld candidate hashes\n", total_checked);
     }
 
-    free(my_words);
+    if (size > 1) {
+        free(my_words);
+    }
     if (rank == 0) {
         free(all_words);
         free(all_results);
@@ -213,4 +248,3 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
-

@@ -9,7 +9,8 @@
 |---|---|---|
 | `serialProcessing.c` | 1 | Serial baseline (your original) |
 | `omp_crack.c` | 2 | OpenMP shared memory |
-| `mpi_crack.c` | 3 | MPI distributed memory |
+| `openmpi_distributed_md5.c` | 3 | Preferred Open MPI, 4-rank cyclic distribution |
+| `mpi_crack.c` | 3 | Original MPI block-distribution version |
 | `hybrid_crack.cu` | 4 | CUDA + OpenMP hybrid |
 
 ---
@@ -31,13 +32,21 @@ OMP_NUM_THREADS=8 ./omp_crack      # force 8 threads
 
 ### Phase 3 — MPI
 ```bash
-# Single machine (4 simulated nodes):
+# Preferred Open MPI version, 4 ranks:
+mpicc -O2 -lssl -lcrypto -o openmpi_distributed_md5 openmpi_distributed_md5.c
+mpirun -np 4 ./openmpi_distributed_md5
+
+# Original block-distribution MPI version:
 mpicc -O2 -lssl -lcrypto -o mpi_crack mpi_crack.c
 mpirun -np 4 ./mpi_crack
 
 # Real cluster (edit hosts file first):
-mpirun -np 4 --hostfile hosts ./mpi_crack
+mpirun -np 4 --hostfile hosts ./openmpi_distributed_md5
 ```
+
+The preferred Open MPI version uses cyclic distribution instead of scattering
+large dictionary chunks. Each rank reads the dictionary and checks only its
+assigned line numbers, which avoids the expensive `MPI_Scatter` step.
 
 **hosts file example:**
 ```
