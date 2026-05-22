@@ -20,3 +20,13 @@ mpirun -np 4 ./mpi_crack
 # ./serial_crack dictionary.txt
 # ./omp_crack dictionary.txt
 # mpirun -np 4 ./mpi_crack dictionary.txt
+
+==+=========
+gcc -O2 -fopenmp -o omp_crack omp_crack.c -lssl -lcrypto
+./omp_crack
+
+mpicc -O2 -o mpi_crack mpi_crack.c -lssl -lcrypto
+mpirun -np 4 ./mpi_crack
+
+nvcc -O2 -Xcompiler -fopenmp -o hybrid hybrid_crack.cu
+./hybrid
