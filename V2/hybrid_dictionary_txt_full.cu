@@ -260,8 +260,8 @@ void hex_to_bytes(const char *hex, unsigned char *out)
 
 int main(int argc, char *argv[])
 {
-    const char *target_hex = "7a265bfa1eed87f48aaa30e2c37f6ade";
     const char *dict_path  = (argc > 1) ? argv[1] : "dictionary.txt";
+    const char *target_hex = (argc > 2) ? argv[2] : "7a265bfa1eed87f48aaa30e2c37f6ade";
 
     printf("=== Hybrid CUDA + OpenMP Full dictionary.txt Password Cracker ===\n");
     printf("Target : %s\n", target_hex);

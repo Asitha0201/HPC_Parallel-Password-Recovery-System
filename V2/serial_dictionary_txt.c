@@ -27,8 +27,8 @@ static void md5_to_hex(const unsigned char *hash, char *output) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *target_hash = "7a265bfa1eed87f48aaa30e2c37f6ade";
     const char *dict_path = (argc > 1) ? argv[1] : "dictionary.txt";
+    const char *target_hash = (argc > 2) ? argv[2] : "7a265bfa1eed87f48aaa30e2c37f6ade";
 
     FILE *file = fopen(dict_path, "r");
     if (!file) {

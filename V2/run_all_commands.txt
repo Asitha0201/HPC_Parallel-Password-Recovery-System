@@ -40,3 +40,7 @@ nvcc -O2 -Xcompiler -fopenmp -o hybrid hybrid_crack.cu
 
 gcc serialProcessing.c -o serialProcessing -lcrypto
 ./serialProcessing
+
+# Flask GUI comparison
+python3 -m pip install --break-system-packages -r requirements.txt
+python3 flask_compare_app.py
