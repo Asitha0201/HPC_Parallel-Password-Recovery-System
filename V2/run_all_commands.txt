@@ -1,5 +1,7 @@
 # Run commands for all three phases
 
+2e5f7c14c9aad53efae18bde750eb249 - ming2
+
 # Phase 1 - Serial
 # Compile serial version and run it
 gcc -O2 -lssl -lcrypto -o serial_crack serialProcessing.c

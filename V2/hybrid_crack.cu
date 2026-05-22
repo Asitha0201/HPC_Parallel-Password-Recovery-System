@@ -260,7 +260,7 @@ void hex_to_bytes(const char *hex, unsigned char *out)
 
 int main(int argc, char *argv[])
 {
-    const char *target_hex = "1f3870be274f6c49b3e31a0c6728957f";
+    const char *target_hex = "2e5f7c14c9aad53efae18bde750eb249";
     const char *dict_path  = (argc > 1) ? argv[1] : "dictionary_old.txt";
 
     printf("=== Hybrid CUDA + OpenMP Password Cracker ===\n");

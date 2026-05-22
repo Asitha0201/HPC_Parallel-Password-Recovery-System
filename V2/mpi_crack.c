@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);  /* My process ID (0 = master) */
     MPI_Comm_size(MPI_COMM_WORLD, &size);  /* Total number of processes */
 
-    const char *target_hash = "1f3870be274f6c49b3e31a0c6728957f"; /* MD5("hello") */
+    const char *target_hash = "2e5f7c14c9aad53efae18bde750eb249"; /* MD5("hello") */
     int total_words = 0;
 
     /*
