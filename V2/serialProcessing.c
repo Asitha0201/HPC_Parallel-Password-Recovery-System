@@ -4,7 +4,8 @@
 #include <openssl/evp.h>
 #include <openssl/md5.h>
 
-#define MAX_WORDS 10000000
+#define MAX_WORDS 100000000
+#define WORD_LEN 512
 
 // MD5 binary hash to readable string
 static void md5_to_hex(const unsigned char *hash, char *output) {
@@ -16,7 +17,7 @@ static void md5_to_hex(const unsigned char *hash, char *output) {
 
 int main(int argc, char *argv[]) {
     char target_hash[] = "2e5f7c14c9aad53efae18bde750eb249"; /* MD5 of "hello" */
-    char word[256];
+    char word[WORD_LEN];
     unsigned char hash[MD5_DIGEST_LENGTH];
     char hash_hex[33];
     unsigned int digest_len = 0;
