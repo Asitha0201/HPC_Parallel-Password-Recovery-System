@@ -1,15 +1,3 @@
-/*
- * serial_dictionary_txt.c
- *
- * Serial MD5 password recovery using dictionary.txt by default.
- *
- * Compile:
- *   gcc -O2 -o serial_dictionary_txt serial_dictionary_txt.c -lssl -lcrypto
- *
- * Run:
- *   ./serial_dictionary_txt
- *   ./serial_dictionary_txt dictionary.txt
- */
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>
@@ -19,6 +7,7 @@
 
 #define WORD_LEN 256
 
+// use this function to convert binary MD5 digest to hex string
 static void md5_to_hex(const unsigned char *hash, char *output) {
     for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
         sprintf(output + (i * 2), "%02x", hash[i]);
