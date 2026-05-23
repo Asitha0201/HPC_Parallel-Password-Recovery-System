@@ -6,6 +6,7 @@
 #include <time.h>
 
 #define WORD_LEN 256
+#define MAX_WORDS 10000000000
 
 // use this function to convert binary MD5 digest to hex string
 static void md5_to_hex(const unsigned char *hash, char *output) {
@@ -16,7 +17,7 @@ static void md5_to_hex(const unsigned char *hash, char *output) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *dict_path = (argc > 1) ? argv[1] : "dictionary.txt";
+    const char *dict_path = (argc > 1) ? argv[1] : "dictionary.txt";// we can define dictionary path from here
     const char *target_hash = (argc > 2) ? argv[2] : "7a265bfa1eed87f48aaa30e2c37f6ade"; // we can define target hash from here 
 
     FILE *file = fopen(dict_path, "r");
