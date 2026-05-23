@@ -7,7 +7,7 @@
 #include <openssl/evp.h>
 
 #define MAX_WORDS  10000000
-#define WORD_LEN   256
+#define WORD_LEN   512
 
 
 void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
