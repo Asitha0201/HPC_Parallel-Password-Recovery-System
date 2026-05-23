@@ -18,20 +18,22 @@ void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
     hex_string[len * 2] = '\0';
 }
 
+void merge()
+
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
     int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  /* My process ID (0 = master) */
-    MPI_Comm_size(MPI_COMM_WORLD, &size);  /* Total number of processes   */
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // My process ID (0 = master) 
+    MPI_Comm_size(MPI_COMM_WORLD, &size);  // Total number of processes 
 
-    const char *target_hash = "5d41402abc4b2a76b9719d911017c592"; /* MD5("hello") */
+    const char *target_hash = "5d41402abc4b2a76b9719d911017c592"; / here we can use target hash 
     int total_words = 0;
 
     /* ── Step 1: Master reads the dictionary ─────────────────────────── */
     static char all_words[MAX_WORDS][WORD_LEN];
     if (rank == 0) {
-        const char *path = (argc > 1) ? argv[1] : "dictionary.txt";
+        const char *path = (argc > 1) ? argv[1] : "dictionary.txt"; 
         FILE *f = fopen(path, "r");
         if (!f) {
             fprintf(stderr, "[Node 0] Error: Cannot open %s\n", path);
