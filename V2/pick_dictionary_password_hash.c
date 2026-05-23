@@ -21,6 +21,7 @@
 
 #define WORD_LEN 256
 #define DEFAULT_OFFSET_FROM_END 100
+#define MD5_DIGEST_LENGTH 16
 
 static void md5_to_hex(const unsigned char *hash, char *output) {
     for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
