@@ -6,8 +6,9 @@
 #include <mpi.h>
 #include <openssl/evp.h>
 
-#define MAX_WORDS  1000000
+#define MAX_WORDS  10000000
 #define WORD_LEN   256
+
 
 void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
     for (int i = 0; i < len; i++)
