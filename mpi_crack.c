@@ -8,6 +8,8 @@
 
 #define MAX_WORDS  10000000
 #define WORD_LEN   512
+#define MAX_RESULTS 64
+
 
 
 void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
