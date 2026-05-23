@@ -6,8 +6,8 @@
 #include <omp.h>
 #include <openssl/evp.h>
 
-#define MAX_WORDS  10000000
-#define WORD_LEN   256
+#define MAX_WORDS  100000000000
+#define WORD_LEN   512
 
 /* Convert binary MD5 digest to 32-char hex string */
 void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
@@ -65,11 +65,7 @@ int main(int argc, char *argv[]) {
             hash_to_hex(digest, hex, digest_len);
 
             if (strcmp(hex, target_hash) == 0) {
-                /*
-                 * Critical section: only one thread updates found_index.
-                 * The double-check (found_index < 0) prevents a second
-                 * thread from overwriting after the first already set it.
-                 */
+                
                 #pragma omp critical
                 {
                     if (found_index < 0)
