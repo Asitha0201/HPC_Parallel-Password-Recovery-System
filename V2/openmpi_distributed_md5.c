@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     double search_start = MPI_Wtime();
 
     while (line_index < MAX_WORDS && fgets(word, sizeof(word), file)) {
-        if ((line_index % STOP_CHECK_LINES) == 0) {
+        if ((line_index % STOP_CHECK_LINES) == 0) { // 
             int local_signal = (found_global_index >= 0) ? found_global_index : -1;
             MPI_Allreduce(&local_signal, &global_stop_index, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
             if (global_stop_index >= 0) {
