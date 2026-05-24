@@ -4,12 +4,9 @@
 #include <openssl/evp.h>
 #include <omp.h>
 
-#define MAX_WORDS 14500000
 #define MAX_LEN 256
 
 const char *target_hash = "07b6cc8e85893a83ca6c7e3f1ca58ea1";
-
-char words[MAX_WORDS][MAX_LEN];
 
 void hash_to_hex(unsigned char *hash, char *hex_string, int len)
 {
@@ -37,7 +34,7 @@ void compute_md5(const char *input, char *output_hex)
 
 int main()
 {
-    int word_count = 0;
+    char word[MAX_LEN];
     char found_word[MAX_LEN] = "";
     long attempts = 0;
     int global_found = 0;
@@ -49,45 +46,55 @@ int main()
         return 1;
     }
 
-    while (word_count < MAX_WORDS && fgets(words[word_count], MAX_LEN, file))
-    {
-        words[word_count][strcspn(words[word_count], "\r\n")] = 0;
-        word_count++;
-    }
-
-    fclose(file);
-
     printf("=== OpenMP MD5 Password Recovery ===\n");
     printf("Target hash: %s\n", target_hash);
-    printf("Total words: %d\n", word_count);
     printf("Threads: %d\n\n", omp_get_max_threads());
 
     double start = omp_get_wtime();
 
-#pragma omp parallel for reduction(+ : attempts) schedule(dynamic, 1000)
-    for (int i = 0; i < word_count; i++)
+#pragma omp parallel shared(file)
     {
+        char local_word[MAX_LEN];
 
-        if (global_found)
-            continue;
-
-        char hex_digest[33];
-        attempts++;
-
-        compute_md5(words[i], hex_digest);
-
-        if (strcmp(hex_digest, target_hash) == 0)
+#pragma omp single
+        while (fgets(word, MAX_LEN, file))
         {
-#pragma omp critical
+
+            if (global_found)
+                break;
+
+            strcpy(local_word, word);
+            local_word[strcspn(local_word, "\r\n")] = 0;
+
+#pragma omp task firstprivate(local_word)
             {
-                if (!global_found)
+                if (global_found)
+                    return;
+
+                char hex_digest[33];
+
+#pragma omp atomic
+                attempts++;
+
+                compute_md5(local_word, hex_digest);
+
+                if (strcmp(hex_digest, target_hash) == 0)
                 {
-                    global_found = 1;
-                    strcpy(found_word, words[i]);
+
+#pragma omp critical
+                    {
+                        if (!global_found)
+                        {
+                            global_found = 1;
+                            strcpy(found_word, local_word);
+                        }
+                    }
                 }
             }
         }
     }
+
+    fclose(file);
 
     double end = omp_get_wtime();
 
