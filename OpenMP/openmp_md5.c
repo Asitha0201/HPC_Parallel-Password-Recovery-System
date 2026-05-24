@@ -40,7 +40,6 @@ int main()
     int word_count = 0;
     char found_word[MAX_LEN] = "";
     long attempts = 0;
-
     int global_found = 0;
 
     FILE *file = fopen("dictionary.txt", "r");
@@ -65,7 +64,7 @@ int main()
 
     double start = omp_get_wtime();
 
-#pragma omp parallel for reduction(+ : attempts)
+#pragma omp parallel for reduction(+ : attempts) schedule(dynamic, 1000)
     for (int i = 0; i < word_count; i++)
     {
 
@@ -79,7 +78,6 @@ int main()
 
         if (strcmp(hex_digest, target_hash) == 0)
         {
-
 #pragma omp critical
             {
                 if (!global_found)
