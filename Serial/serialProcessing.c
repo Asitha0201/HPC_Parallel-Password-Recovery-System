@@ -63,7 +63,9 @@ int main()
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
 
     EVP_MD_CTX_free(ctx);
-    fclose(file);
+
+    if (file)
+        fclose(file);
 
     if (!found)
         printf("Password not found in dictionary.\n");
