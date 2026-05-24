@@ -19,15 +19,21 @@ int main()
     char hash_hex[33];
     int attempts = 0;
     int found = 0;
-    FILE *file = fopen("dictionary.txt", "r"); //*file pointer to read the file, "r" for read mode
+    FILE *file = NULL;
+    file = fopen("dictionary.txt", "r"); //*file pointer to read the file, "r" for read mode
     if (!file)
     {
         printf("Cannot open dictionary.txt\n");
         return 1;
     }
 
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new(); // we use the OpenSSL library to compute the MD5 hash, we create a new context for the hashing operation using EVP_MD_CTX_new().
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
+    if (!ctx)
+    {
+        printf("Failed to create EVP context\n");
+        return 1;
+    }
     // printf("=== Serial MD5 Password Recovery ===\n");
     printf("Target hash: %s\n\n", target_hash);
 
