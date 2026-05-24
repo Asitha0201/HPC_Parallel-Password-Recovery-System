@@ -35,6 +35,7 @@ int main()
         return 1;
     }
     // printf("=== Serial MD5 Password Recovery ===\n");
+    printf("\n=== MD5 Password Recovery ===\n");
     printf("Target hash: %s\n\n", target_hash);
 
     clock_t start = clock();
@@ -46,6 +47,8 @@ int main()
         word[len] = '\0';
         attempts++;
         EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
+        EVP_DigestUpdate(ctx, word, strlen(word));
+        EVP_DigestFinal_ex(ctx, hash, &digest_len);
         md5_to_hex(hash, hash_hex); /* convert to hex string */
 
         if (strcmp(hash_hex, target_hash) == 0)
