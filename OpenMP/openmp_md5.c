@@ -14,9 +14,7 @@ char words[MAX_WORDS][MAX_LEN];
 void hash_to_hex(unsigned char *hash, char *hex_string, int len)
 {
     for (int i = 0; i < len; i++)
-    {
         sprintf(hex_string + (i * 2), "%02x", hash[i]);
-    }
     hex_string[len * 2] = '\0';
 }
 
@@ -41,8 +39,9 @@ int main()
 {
     int word_count = 0;
     char found_word[MAX_LEN] = "";
-    int found = 0;
     long attempts = 0;
+
+    int global_found = 0;
 
     FILE *file = fopen("dictionary.txt", "r");
     if (!file)
@@ -69,7 +68,8 @@ int main()
 #pragma omp parallel for reduction(+ : attempts)
     for (int i = 0; i < word_count; i++)
     {
-        if (found)
+
+        if (global_found)
             continue;
 
         char hex_digest[33];
@@ -79,11 +79,12 @@ int main()
 
         if (strcmp(hex_digest, target_hash) == 0)
         {
+
 #pragma omp critical
             {
-                if (!found)
+                if (!global_found)
                 {
-                    found = 1;
+                    global_found = 1;
                     strcpy(found_word, words[i]);
                 }
             }
@@ -92,7 +93,11 @@ int main()
 
     double end = omp_get_wtime();
 
-    printf(found ? "Password found: %s\n" : "Password not found in dictionary.\n", found_word);
+    if (global_found)
+        printf("Password found: %s\n", found_word);
+    else
+        printf("Password not found in dictionary.\n");
+
     printf("Attempts: %ld\n", attempts);
     printf("Time: %.6f seconds\n", end - start);
 
