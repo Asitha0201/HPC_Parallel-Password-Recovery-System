@@ -8,14 +8,14 @@
 
 const char *target_hash = "07b6cc8e85893a83ca6c7e3f1ca58ea1";
 
-void hash_to_hex(unsigned char *hash, char *hex_string, int len)
+static inline void hash_to_hex(unsigned char *hash, char *hex, int len)
 {
     for (int i = 0; i < len; i++)
-        sprintf(hex_string + (i * 2), "%02x", hash[i]);
-    hex_string[len * 2] = '\0';
+        sprintf(hex + (i * 2), "%02x", hash[i]);
+    hex[len * 2] = '\0';
 }
 
-void compute_md5(const char *input, char *output_hex)
+static inline void compute_md5(const char *input, char *out)
 {
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -28,7 +28,7 @@ void compute_md5(const char *input, char *output_hex)
     EVP_DigestUpdate(ctx, input, strlen(input));
     EVP_DigestFinal_ex(ctx, digest, &len);
 
-    hash_to_hex(digest, output_hex, len);
+    hash_to_hex(digest, out, len);
     EVP_MD_CTX_free(ctx);
 }
 
@@ -37,7 +37,7 @@ int main()
     char word[MAX_LEN];
     char found_word[MAX_LEN] = "";
     long attempts = 0;
-    int global_found = 0;
+    int found = 0;
 
     FILE *file = fopen("dictionary.txt", "r");
     if (!file)
@@ -52,41 +52,43 @@ int main()
 
     double start = omp_get_wtime();
 
-#pragma omp parallel shared(file)
+#pragma omp parallel
     {
-        char local_word[MAX_LEN];
+        char local[MAX_LEN];
 
-#pragma omp single
-        while (fgets(word, MAX_LEN, file))
+#pragma omp single nowait
         {
-
-            if (global_found)
-                break;
-
-            strcpy(local_word, word);
-            local_word[strcspn(local_word, "\r\n")] = 0;
-
-#pragma omp task firstprivate(local_word)
+            while (fgets(word, MAX_LEN, file))
             {
-                if (global_found)
-                    return;
 
-                char hex_digest[33];
+                if (found)
+                    break;
+
+                strcpy(local, word);
+                local[strcspn(local, "\r\n")] = 0;
+
+#pragma omp task firstprivate(local)
+                {
+                    if (found)
+                        return;
+
+                    char hex[33];
 
 #pragma omp atomic
-                attempts++;
+                    attempts++;
 
-                compute_md5(local_word, hex_digest);
+                    compute_md5(local, hex);
 
-                if (strcmp(hex_digest, target_hash) == 0)
-                {
+                    if (strcmp(hex, target_hash) == 0)
+                    {
 
 #pragma omp critical
-                    {
-                        if (!global_found)
                         {
-                            global_found = 1;
-                            strcpy(found_word, local_word);
+                            if (!found)
+                            {
+                                found = 1;
+                                strcpy(found_word, local);
+                            }
                         }
                     }
                 }
@@ -98,7 +100,7 @@ int main()
 
     double end = omp_get_wtime();
 
-    if (global_found)
+    if (found)
         printf("Password found: %s\n", found_word);
     else
         printf("Password not found in dictionary.\n");
