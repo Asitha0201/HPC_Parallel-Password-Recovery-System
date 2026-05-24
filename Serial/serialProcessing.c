@@ -42,14 +42,11 @@ int main()
     /* Try each word from dictionary */
     while (fgets(word, sizeof(word), file))
     {
-        word[strcspn(word, "\r\n")] = 0; /* remove newline here this text file make on Windows so line endings are different */
+        size_t len = strcspn(word, "\r\n");
+        word[len] = '\0';
         attempts++;
-
-        /* Compute MD5 hash using EVP API */
         EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-        EVP_DigestUpdate(ctx, word, strlen(word));
-        EVP_DigestFinal_ex(ctx, hash, &digest_len); /* compute MD5 hash */
-        md5_to_hex(hash, hash_hex);                 /* convert to hex string */
+        md5_to_hex(hash, hash_hex); /* convert to hex string */
 
         if (strcmp(hash_hex, target_hash) == 0)
         { /* compare */
