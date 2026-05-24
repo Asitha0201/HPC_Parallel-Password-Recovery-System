@@ -27,8 +27,13 @@ int main()
         return 1;
     }
 
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new(); // we use the OpenSSL library to compute the MD5 hash, we create a new context for the hashing operation using EVP_MD_CTX_new().
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
+    if (!ctx)
+    {
+        printf("Failed to create EVP context\n");
+        return 1;
+    }
     // printf("=== Serial MD5 Password Recovery ===\n");
     printf("Target hash: %s\n\n", target_hash);
 
