@@ -19,7 +19,8 @@ int main()
     char hash_hex[33];
     int attempts = 0;
     int found = 0;
-    FILE *file = fopen("dictionary.txt", "r"); //*file pointer to read the file, "r" for read mode
+    FILE *file = NULL;
+    file = fopen("dictionary.txt", "r"); //*file pointer to read the file, "r" for read mode
     if (!file)
     {
         printf("Cannot open dictionary.txt\n");
