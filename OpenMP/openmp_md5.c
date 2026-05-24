@@ -20,6 +20,23 @@ void hash_to_hex(unsigned char *hash, char *hex_string, int len)
     hex_string[len * 2] = '\0';
 }
 
+void compute_md5(const char *input, char *output_hex)
+{
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int len;
+
+    if (!ctx)
+        return;
+
+    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
+    EVP_DigestUpdate(ctx, input, strlen(input));
+    EVP_DigestFinal_ex(ctx, digest, &len);
+
+    hash_to_hex(digest, output_hex, len);
+    EVP_MD_CTX_free(ctx);
+}
+
 int main()
 {
     int word_count = 0;
@@ -55,21 +72,10 @@ int main()
         if (found)
             continue;
 
-        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-        unsigned char digest[EVP_MAX_MD_SIZE];
-        unsigned int digest_len;
         char hex_digest[33];
-
-        if (ctx == NULL)
-            continue;
-
         attempts++;
 
-        EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-        EVP_DigestUpdate(ctx, words[i], strlen(words[i]));
-        EVP_DigestFinal_ex(ctx, digest, &digest_len);
-
-        hash_to_hex(digest, hex_digest, digest_len);
+        compute_md5(words[i], hex_digest);
 
         if (strcmp(hex_digest, target_hash) == 0)
         {
@@ -82,17 +88,11 @@ int main()
                 }
             }
         }
-
-        EVP_MD_CTX_free(ctx);
     }
 
     double end = omp_get_wtime();
 
-    if (found)
-        printf("Password found: %s\n", found_word);
-    else
-        printf("Password not found in dictionary.\n");
-
+    printf(found ? "Password found: %s\n" : "Password not found in dictionary.\n", found_word);
     printf("Attempts: %ld\n", attempts);
     printf("Time: %.6f seconds\n", end - start);
 
