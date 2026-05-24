@@ -7,30 +7,35 @@
 #define MAX_WORDS 14500000
 #define MAX_LEN 256
 
+const char *target_hash = "07b6cc8e85893a83ca6c7e3f1ca58ea1";
+
 char words[MAX_WORDS][MAX_LEN];
 
-void hash_to_hex(unsigned char *hash, char *hex_string, int len) {
-    for (int i = 0; i < len; i++) {
+void hash_to_hex(unsigned char *hash, char *hex_string, int len)
+{
+    for (int i = 0; i < len; i++)
+    {
         sprintf(hex_string + (i * 2), "%02x", hash[i]);
     }
     hex_string[len * 2] = '\0';
 }
 
-int main() {
-    const char *target_hash = "07b6cc8e85893a83ca6c7e3f1ca58ea1";
-
+int main()
+{
     int word_count = 0;
     char found_word[MAX_LEN] = "";
     int found = 0;
     long attempts = 0;
 
     FILE *file = fopen("dictionary.txt", "r");
-    if (!file) {
+    if (!file)
+    {
         printf("Error: Cannot open dictionary.txt\n");
         return 1;
     }
 
-    while (word_count < MAX_WORDS && fgets(words[word_count], MAX_LEN, file)) {
+    while (word_count < MAX_WORDS && fgets(words[word_count], MAX_LEN, file))
+    {
         words[word_count][strcspn(words[word_count], "\r\n")] = 0;
         word_count++;
     }
@@ -44,16 +49,19 @@ int main() {
 
     double start = omp_get_wtime();
 
-    #pragma omp parallel for reduction(+:attempts)
-    for (int i = 0; i < word_count; i++) {
-        if (found) continue;
+#pragma omp parallel for reduction(+ : attempts)
+    for (int i = 0; i < word_count; i++)
+    {
+        if (found)
+            continue;
 
         EVP_MD_CTX *ctx = EVP_MD_CTX_new();
         unsigned char digest[EVP_MAX_MD_SIZE];
         unsigned int digest_len;
         char hex_digest[33];
 
-        if (ctx == NULL) continue;
+        if (ctx == NULL)
+            continue;
 
         attempts++;
 
@@ -63,10 +71,12 @@ int main() {
 
         hash_to_hex(digest, hex_digest, digest_len);
 
-        if (strcmp(hex_digest, target_hash) == 0) {
-            #pragma omp critical
+        if (strcmp(hex_digest, target_hash) == 0)
+        {
+#pragma omp critical
             {
-                if (!found) {
+                if (!found)
+                {
                     found = 1;
                     strcpy(found_word, words[i]);
                 }
